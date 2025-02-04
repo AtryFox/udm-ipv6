@@ -32,8 +32,15 @@ lan_ula=true
 # set ULA on guest interfaces?
 guest_ula=false
 
+# set ULA on explicitly include interfaces?
+custom_ula=true
+
 # ULA prefix to be used
 ula_prefix="fd00:2:0:"
+
+# interfaces listed in include will explicitly be assigned IPv6 ULAs
+# Multiple interfaces are to be separated by spaces.
+include="br105"
 
 # interfaces listed in exclude will not be assigned any IPv6 ULAs
 # Multiple interfaces are to be separated by spaces.
@@ -107,6 +114,26 @@ if [ $guest_ula == "true" ]; then
 
 	# Add ULAs to all LAN interfaces except the ones listed in $exclude
 	for i in $guest_if; do
+		case "$exclude " in
+			*"$i "*)
+				logger "$me: Excluding $i from ULA assignment as requested in config."
+				;;
+
+			*)
+				ip -6 addr show dev $i | grep "$ula_prefix" &> /dev/null ||
+					ip -6 addr add "${ula_prefix}${i:2}::1/64" dev $i
+				;;
+		esac
+	done
+fi
+
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# ULAs for custom interfaces
+#
+
+if [ $custom_ula == "true" ]; then
+	# Add ULAs to all custom interfaces listed in $include except the ones listed in $exclude
+	for i in $include; do
 		case "$exclude " in
 			*"$i "*)
 				logger "$me: Excluding $i from ULA assignment as requested in config."
